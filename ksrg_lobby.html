@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KSRG</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#09100f;--surface:#0f1a18;--surface2:#142420;
+  --gold:#c9a84c;--gold2:#f0d080;
+  --green:#1a7a5e;--green2:#22a87e;
+  --muted:#4a6360;--text:#e8f0ee;--text2:#8aada8;
+  --pos:#4ade80;--neg:#f87171;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(26,122,94,0.12) 0%,transparent 70%),radial-gradient(ellipse 60% 40% at 80% 80%,rgba(201,168,76,0.06) 0%,transparent 60%),repeating-linear-gradient(45deg,transparent,transparent 2px,rgba(255,255,255,0.005) 2px,rgba(255,255,255,0.005) 4px);pointer-events:none;z-index:0;}
+
+.page{position:relative;z-index:1;max-width:440px;margin:0 auto;min-height:100vh;display:none;flex-direction:column;padding-bottom:80px;}
+.page.active{display:flex;}
+
+/* Bottom Nav */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:440px;background:rgba(9,16,15,0.96);border-top:1px solid rgba(255,255,255,0.07);display:flex;z-index:50;backdrop-filter:blur(12px);}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0;cursor:pointer;opacity:0.4;transition:all 0.2s;}
+.nav-item.active{opacity:1;}
+.nav-label{font-size:0.56rem;letter-spacing:0.04em;}
+.nav-item.active .nav-label{color:var(--green2);}
+
+/* Login */
+.login-overlay{position:fixed;inset:0;z-index:100;background:rgba(9,16,15,0.97);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;animation:fadeIn 0.4s ease;}
+.login-box{width:100%;max-width:360px;background:var(--surface);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:36px 28px;display:flex;flex-direction:column;align-items:center;gap:20px;box-shadow:0 24px 80px rgba(0,0,0,0.6);}
+.llc{width:36px;height:48px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:900;}
+.llc.r{background:#8b1a1a;color:#fff;}
+.llc.d{background:#1a1a1a;color:#fff;border:1px solid rgba(255,255,255,0.1);}
+.login-title{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:var(--gold2);letter-spacing:0.1em;}
+.login-desc{font-size:0.7rem;color:var(--text2);text-align:center;line-height:1.7;}
+.btn-google{width:100%;padding:14px;background:#fff;border:none;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:0.9rem;font-weight:700;color:#1a1a1a;cursor:pointer;transition:all 0.2s;font-family:'Noto Sans JP',sans-serif;}
+.btn-google:active{transform:scale(0.98);}
+.gicon{width:20px;height:20px;flex-shrink:0;background:url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="%23EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="%234285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="%23FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="%2334A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>') center/contain no-repeat;}
+.login-terms{font-size:0.58rem;color:var(--muted);text-align:center;line-height:1.6;}
+
+/* Page Header */
+.page-header{padding:36px 24px 16px;display:flex;flex-direction:column;align-items:center;gap:8px;}
+.logo-mark{display:flex;gap:5px;align-items:center;}
+.logo-card{width:40px;height:54px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:900;box-shadow:0 4px 16px rgba(0,0,0,0.5);}
+.logo-card.r{background:#8b1a1a;color:#fff;border:1px solid rgba(255,255,255,0.12);}
+.logo-card.d{background:#1a1a1a;color:#fff;border:1px solid rgba(255,255,255,0.08);}
+.logo-suit{font-size:0.75rem;margin-left:1px;opacity:0.8;}
+.logo-title{font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:900;letter-spacing:0.15em;color:var(--gold2);text-shadow:0 0 40px rgba(201,168,76,0.3);}
+.logo-sub{font-size:0.6rem;color:var(--text2);letter-spacing:0.08em;}
+
+/* Shared */
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--muted),transparent);margin:16px 24px 0;}
+.card-block{margin:12px 24px 0;background:var(--surface);border:1px solid rgba(255,255,255,0.06);border-radius:14px;overflow:hidden;}
+.avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;color:#fff;flex-shrink:0;}
+
+/* Lobby */
+.btn-play{width:100%;padding:16px;background:linear-gradient(135deg,var(--green),var(--green2));border:none;border-radius:14px;color:#fff;font-family:'Noto Sans JP',sans-serif;font-size:1rem;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;box-shadow:0 4px 24px rgba(26,122,94,0.4);transition:all 0.15s;position:relative;overflow:hidden;}
+.btn-play::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,0.1),transparent 50%);pointer-events:none;}
+.btn-play:active{transform:scale(0.98);}
+.btn-play-sub{font-size:0.62rem;opacity:0.7;font-weight:400;}
+.online-bar{margin:10px 24px 0;padding:11px 14px;background:var(--surface);border:1px solid rgba(255,255,255,0.06);border-radius:11px;display:flex;align-items:center;gap:9px;cursor:pointer;}
+.online-dot{width:7px;height:7px;border-radius:50%;background:var(--pos);box-shadow:0 0 7px var(--pos);animation:pulse 2s ease infinite;}
+.online-text{font-size:0.68rem;color:var(--text2);}
+.online-count{font-size:0.68rem;font-weight:700;font-family:'DM Mono',monospace;}
+.online-arrow{margin-left:auto;color:var(--muted);font-size:0.6rem;}
+.msh{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:8px;}
+.mst{font-size:0.62rem;color:var(--text2);letter-spacing:0.06em;}
+.msn{font-size:0.82rem;font-weight:700;}
+.msg{display:grid;grid-template-columns:repeat(3,1fr);padding:12px 14px;gap:8px;}
+.ms{display:flex;flex-direction:column;gap:2px;}
+.msl{font-size:0.54rem;color:var(--text2);}
+.msv{font-family:'DM Mono',monospace;font-size:0.95rem;font-weight:500;}
+.msv.pos{color:var(--pos);} .msv.neg{color:var(--neg);} .msv.neu{color:var(--gold2);}
+.chart-wrap{padding:0 14px 12px;}
+.chart-legend{font-size:0.54rem;color:var(--text2);display:flex;gap:12px;margin-bottom:4px;}
+.chart-legend span{display:flex;align-items:center;gap:3px;}
+.chart-legend span::before{content:'';display:inline-block;width:14px;height:2px;border-radius:1px;}
+.cl1::before{background:var(--pos);} .cl2::before{background:var(--gold);}
+
+/* Stats */
+.stats-summary{margin:10px 24px 0;display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
+.ss-card{background:var(--surface);border:1px solid rgba(255,255,255,0.06);border-radius:11px;padding:12px 10px;display:flex;flex-direction:column;gap:3px;}
+.ss-label{font-size:0.52rem;color:var(--text2);}
+.ss-val{font-family:'DM Mono',monospace;font-size:0.88rem;font-weight:500;}
+.ss-sub{font-size:0.48rem;color:var(--muted);}
+.big-chart{margin:10px 24px 0;background:var(--surface);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:14px;}
+.bc-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.bc-title{font-size:0.65rem;color:var(--text2);letter-spacing:0.06em;}
+.bc-tabs{display:flex;gap:4px;}
+.bc-tab{font-size:0.55rem;padding:3px 7px;border-radius:5px;cursor:pointer;color:var(--text2);transition:all 0.15s;}
+.bc-tab.active{background:rgba(34,168,126,0.2);color:var(--green2);}
+.stats-detail{margin:10px 24px 0;background:var(--surface);border:1px solid rgba(255,255,255,0.06);border-radius:14px;overflow:hidden;}
+.sd-row{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,0.04);}
+.sd-row:last-child{border-bottom:none;}
+.sd-label{font-size:0.67rem;color:var(--text2);}
+.sd-val{font-family:'DM Mono',monospace;font-size:0.75rem;}
+.sd-sub{font-size:0.52rem;color:var(--muted);text-align:right;margin-top:1px;}
+
+/* Leaderboard */
+.lb-hdr{padding:12px 24px 0;display:flex;gap:6px;}
+.lb-tab{flex:1;padding:8px;text-align:center;font-size:0.62rem;border-radius:8px;cursor:pointer;color:var(--text2);background:var(--surface);border:1px solid rgba(255,255,255,0.06);transition:all 0.15s;}
+.lb-tab.active{background:rgba(34,168,126,0.15);border-color:var(--green2);color:var(--green2);}
+.lb-list{margin:10px 24px 0;display:flex;flex-direction:column;gap:5px;}
+.lb-row{background:var(--surface);border:1px solid rgba(255,255,255,0.06);border-radius:11px;padding:11px 13px;display:flex;align-items:center;gap:9px;}
+.lb-row.me{border-color:rgba(34,168,126,0.4);background:rgba(34,168,126,0.05);}
+.lb-rank{font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);width:18px;text-align:center;flex-shrink:0;}
+.lb-rank.t1{color:var(--gold2);font-size:0.85rem;}
+.lb-rank.t2{color:#aaa;}
+.lb-rank.t3{color:#cd7f32;}
+.lb-av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.62rem;font-weight:700;color:#fff;flex-shrink:0;}
+.lb-name{font-size:0.74rem;font-weight:600;flex:1;}
+.lb-hands{font-size:0.55rem;color:var(--muted);}
+.lb-val{font-family:'DM Mono',monospace;font-size:0.82rem;text-align:right;}
+.lb-sub{font-size:0.52rem;color:var(--muted);text-align:right;}
+
+/* Hand History */
+.hh-tabs{display:flex;margin:10px 24px 0;background:var(--surface);border:1px solid rgba(255,255,255,0.06);border-radius:9px;overflow:hidden;}
+.hh-tab{flex:1;padding:8px;text-align:center;font-size:0.62rem;cursor:pointer;color:var(--text2);transition:all 0.15s;}
+.hh-tab.active{background:rgba(34,168,126,0.15);color:var(--green2);}
+.hh-count{font-size:0.57rem;color:var(--muted);text-align:center;padding:6px 24px 0;}
+.hh-list{margin:7px 24px 0;display:flex;flex-direction:column;gap:5px;}
+.hh-row{background:var(--surface);border:1px solid rgba(255,255,255,0.06);border-radius:11px;padding:11px 13px;cursor:pointer;transition:border-color 0.15s;}
+.hh-row:hover{border-color:rgba(255,255,255,0.12);}
+.hh-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;}
+.hh-meta{display:flex;align-items:center;gap:5px;}
+.hh-date{font-size:0.58rem;color:var(--text2);}
+.hh-pos{font-size:0.52rem;padding:2px 5px;border-radius:4px;background:rgba(255,255,255,0.08);color:var(--text2);font-weight:700;}
+.hh-profit{font-family:'DM Mono',monospace;font-size:0.8rem;}
+.hh-cards{display:flex;gap:3px;flex-wrap:wrap;}
+.hc{width:28px;height:36px;border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:900;background:#f7f4ef;border:1px solid rgba(0,0,0,0.12);box-shadow:0 1px 3px rgba(0,0,0,0.3);}
+.hc.rv{color:#d0021b;}
+.hc.bk{color:#1a1a1a;}
+.hc.gr{color:#1a1a1a;}
+.hc.wt{color:#1a1a1a;}
+.hc .t{font-size:0.65rem;line-height:1.1;}
+.hc .b{font-size:0.75rem;line-height:1;}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,0.75);display:none;align-items:flex-end;backdrop-filter:blur(4px);}
+.modal-overlay.open{display:flex;}
+.modal{width:100%;max-width:440px;margin:0 auto;background:#0d1916;border-radius:18px 18px 0 0;border-top:1px solid rgba(255,255,255,0.1);max-height:88vh;overflow-y:auto;animation:slideUp 0.3s ease;}
+.modal-hdr{padding:14px 18px 11px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#0d1916;z-index:1;}
+.modal-title{font-size:0.82rem;font-weight:700;}
+.modal-sub{font-size:0.57rem;color:var(--text2);margin-top:1px;}
+.modal-close{width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,0.08);border:none;color:var(--text2);cursor:pointer;font-size:0.75rem;}
+.modal-players{padding:10px 18px;display:flex;flex-direction:column;gap:5px;}
+.mp-row{display:flex;align-items:center;gap:7px;}
+.mp-pos{font-size:0.55rem;padding:2px 4px;border-radius:3px;background:rgba(255,255,255,0.08);color:var(--text2);font-weight:700;width:28px;text-align:center;flex-shrink:0;}
+.mp-name{font-size:0.7rem;flex:1;}
+.mp-stack{font-size:0.55rem;color:var(--muted);}
+.mp-cards{display:flex;gap:2px;margin:0 4px;}
+.mp-card{width:20px;height:27px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:0.46rem;font-weight:800;background:#f7f4ef;border:1px solid rgba(0,0,0,0.12);box-shadow:0 1px 2px rgba(0,0,0,0.3);}
+.mp-profit{font-family:'DM Mono',monospace;font-size:0.72rem;width:56px;text-align:right;flex-shrink:0;}
+.modal-sep{height:1px;background:rgba(255,255,255,0.05);margin:0 18px;}
+.modal-actions{padding:10px 18px;}
+.phase-block{margin-bottom:12px;}
+.phase-title{font-size:0.62rem;font-weight:700;color:var(--text2);margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+.phase-pot{font-size:0.57rem;color:var(--muted);font-family:'DM Mono',monospace;}
+.phase-board{display:flex;gap:3px;margin-bottom:5px;}
+.action-row{display:flex;align-items:baseline;gap:5px;padding:2px 0;}
+.ar-pos{font-size:0.57rem;color:var(--muted);width:26px;flex-shrink:0;}
+.ar-name{font-size:0.65rem;}
+.ar-act{font-size:0.65rem;font-weight:700;}
+.ar-act.raise{color:var(--neg);} .ar-act.call{color:var(--green2);} .ar-act.fold{color:var(--muted);} .ar-act.check{color:var(--text2);}
+.ar-amt{font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--text2);}
+
+@keyframes pulse{0%,100%{box-shadow:0 0 7px var(--pos);}50%{opacity:0.7;box-shadow:0 0 14px var(--pos);}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeOut{from{opacity:1}to{opacity:0}}
+@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-box">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+      <div style="display:flex;gap:4px;">
+        <div class="llc r">K<span style="font-size:0.6rem">♥</span></div>
+        <div class="llc d">S<span style="font-size:0.6rem">♠</span></div>
+      </div>
+      <div class="login-title">KSRG</div>
+    </div>
+    <div class="login-desc">スカーニーポーカーで勝負。<br>収支・Win Rateをトラッキングしよう。</div>
+    <button class="btn-google" onclick="doLogin()">
+      <div class="gicon"></div>Googleでログイン
+    </button>
+    <div class="login-terms">ログインすることでご利用規約および<br>プライバシーポリシーに同意したものとみなします。</div>
+  </div>
+</div>
+
+<!-- ── Lobby ── -->
+<div class="page active" id="page-lobby">
+  <div class="page-header">
+    <div class="logo-mark">
+      <div class="logo-card r">K<span class="logo-suit">♥</span></div>
+      <div class="logo-card d">S<span class="logo-suit">♠</span></div>
+    </div>
+    <div class="logo-title">KSRG</div>
+    <div class="logo-sub">スカーニーポーカー 6-Max · Pot Limit · Bomb Pot</div>
+  </div>
+  <div class="divider"></div>
+  <div style="padding:16px 24px 0;">
+    <button class="btn-play" onclick="startGame()">
+      <div>▶ ゲームをプレイ</div>
+      <div class="btn-play-sub">6-Max · Pot Limit · Bomb Pot</div>
+    </button>
+  </div>
+  <div class="online-bar">
+    <div class="online-dot"></div>
+    <span class="online-text">参加中のプレイヤー</span>
+    <span class="online-count">—</span>
+    <span class="online-arrow">›</span>
+  </div>
+  <div class="card-block">
+    <div class="msh">
+      <div class="avatar" style="background:linear-gradient(135deg,var(--green),var(--gold))">K</div>
+      <div><div class="mst">MY STATS</div><div class="msn">Kisaragi</div></div>
+    </div>
+    <div class="msg">
+      <div class="ms"><div class="msl">総ハンド数</div><div class="msv neu">2,205</div></div>
+      <div class="ms"><div class="msl">実収支</div><div class="msv pos">+363.1bb</div></div>
+      <div class="ms"><div class="msl">bb/100</div><div class="msv pos">+16.47</div></div>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-legend"><span class="cl1">実収支</span><span class="cl2">収支 (EV)</span></div>
+      <svg width="100%" height="60" viewBox="0 0 300 60" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="lg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4ade80" stop-opacity="0.25"/><stop offset="100%" stop-color="#4ade80" stop-opacity="0"/></linearGradient>
+          <linearGradient id="lg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#c9a84c" stop-opacity="0.15"/><stop offset="100%" stop-color="#c9a84c" stop-opacity="0"/></linearGradient>
+        </defs>
+        <path d="M0,55 C30,50 50,42 80,34 C110,26 130,30 160,20 C185,12 210,15 240,9 C260,5 280,4 300,3" fill="url(#lg1)" stroke="#4ade80" stroke-width="1.5"/>
+        <path d="M0,55 C30,46 50,38 80,28 C110,18 130,22 160,12 C185,4 210,6 240,3 C260,1 280,1 300,1" fill="url(#lg2)" stroke="#c9a84c" stroke-width="1.5" opacity="0.65"/>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- ── Stats ── -->
+<div class="page" id="page-stats">
+  <div class="page-header">
+    <div class="logo-mark">
+      <div class="logo-card r">K<span class="logo-suit">♥</span></div>
+      <div class="logo-card d">S<span class="logo-suit">♠</span></div>
+    </div>
+    <div class="logo-title">KSRG</div>
+  </div>
+  <div class="card-block" style="margin:10px 24px 0;">
+    <div class="msh">
+      <div class="avatar" style="background:linear-gradient(135deg,var(--green),var(--gold))">K</div>
+      <div><div class="msn">Kisaragi</div><div style="font-size:0.57rem;color:var(--muted);">初プレイ: 2026/2/3</div></div>
+    </div>
+  </div>
+  <div class="stats-summary">
+    <div class="ss-card"><div class="ss-label">総ハンド数</div><div class="ss-val neu">2,205</div></div>
+    <div class="ss-card"><div class="ss-label">実収支</div><div class="ss-val pos">+363.1bb</div></div>
+    <div class="ss-card"><div class="ss-label">Win Rate</div><div class="ss-val pos">+16.47</div><div class="ss-sub">bb/100</div></div>
+    <div class="ss-card"><div class="ss-label">収支 (EV)</div><div class="ss-val pos">+509.4bb</div></div>
+    <div class="ss-card"><div class="ss-label">Win Rate (EV)</div><div class="ss-val pos">+23.10</div><div class="ss-sub">bb/100</div></div>
+    <div class="ss-card"><div class="ss-label">VPIP / PFR</div><div class="ss-val neu">21 / 16</div></div>
+  </div>
+  <div class="big-chart">
+    <div class="bc-hdr">
+      <div class="bc-title">収支グラフ</div>
+      <div class="bc-tabs">
+        <div class="bc-tab active">全期間</div>
+        <div class="bc-tab">1万</div>
+        <div class="bc-tab">直近</div>
+      </div>
+    </div>
+    <div class="chart-legend" style="margin-bottom:7px;"><span class="cl1">実収支</span><span class="cl2">収支 (EV)</span></div>
+    <svg width="100%" height="110" viewBox="0 0 300 110" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="bg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4ade80" stop-opacity="0.2"/><stop offset="100%" stop-color="#4ade80" stop-opacity="0"/></linearGradient>
+        <linearGradient id="bg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#c9a84c" stop-opacity="0.12"/><stop offset="100%" stop-color="#c9a84c" stop-opacity="0"/></linearGradient>
+      </defs>
+      <line x1="0" y1="85" x2="300" y2="85" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+      <path d="M0,90 C20,85 35,78 55,70 C75,62 85,66 105,55 C125,44 135,50 155,38 C175,26 190,30 215,18 C235,8 255,10 275,6 C285,4 292,3 300,2" fill="url(#bg1)" stroke="#4ade80" stroke-width="1.8"/>
+      <path d="M0,90 C20,80 35,72 55,62 C75,52 85,56 105,44 C125,32 135,36 155,24 C175,12 190,14 215,7 C235,2 255,2 275,1 C285,1 292,1 300,1" fill="url(#bg2)" stroke="#c9a84c" stroke-width="1.8" opacity="0.6"/>
+      <text x="2" y="103" fill="rgba(255,255,255,0.18)" font-size="7">0</text>
+      <text x="58" y="103" fill="rgba(255,255,255,0.18)" font-size="7">500</text>
+      <text x="138" y="103" fill="rgba(255,255,255,0.18)" font-size="7">1100</text>
+      <text x="218" y="103" fill="rgba(255,255,255,0.18)" font-size="7">1700</text>
+      <text x="268" y="103" fill="rgba(255,255,255,0.18)" font-size="7">2205</text>
+    </svg>
+  </div>
+  <div class="stats-detail">
+    <div class="sd-row"><div class="sd-label">VPIP</div><div><div class="sd-val neu">21%</div><div class="sd-sub">456/2.1k</div></div></div>
+    <div class="sd-row"><div class="sd-label">PFR</div><div><div class="sd-val neu">16%</div><div class="sd-sub">346/2.1k</div></div></div>
+    <div class="sd-row"><div class="sd-label">3Bet</div><div><div class="sd-val neu">8%</div><div class="sd-sub">73/882</div></div></div>
+    <div class="sd-row"><div class="sd-label">Aggression Factor</div><div><div class="sd-val neu">2.4</div></div></div>
+    <div class="sd-row"><div class="sd-label">Went to Showdown</div><div><div class="sd-val neu">24%</div></div></div>
+  </div>
+</div>
+
+<!-- ── Leaderboard ── -->
+<div class="page" id="page-lb">
+  <div class="page-header">
+    <div class="logo-mark">
+      <div class="logo-card r">K<span class="logo-suit">♥</span></div>
+      <div class="logo-card d">S<span class="logo-suit">♠</span></div>
+    </div>
+    <div class="logo-title">KSRG</div>
+  </div>
+  <div class="lb-hdr">
+    <div class="lb-tab active" onclick="switchLbTab(this,'wr')">Win Rate (EV)</div>
+    <div class="lb-tab" onclick="switchLbTab(this,'profit')">収支 (EV)</div>
+  </div>
+  <div class="lb-list" id="lb-list"></div>
+</div>
+
+<!-- ── Hand History ── -->
+<div class="page" id="page-hh">
+  <div class="page-header">
+    <div class="logo-mark">
+      <div class="logo-card r">K<span class="logo-suit">♥</span></div>
+      <div class="logo-card d">S<span class="logo-suit">♠</span></div>
+    </div>
+    <div class="logo-title">KSRG</div>
+  </div>
+  <div class="hh-tabs">
+    <div class="hh-tab active">すべて</div>
+    <div class="hh-tab">ブックマーク</div>
+  </div>
+  <div class="hh-count">直近 100 ハンドを表示中</div>
+  <div class="hh-list" id="hh-list"></div>
+</div>
+
+<!-- Hand Detail Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <div class="nav-item active" onclick="goPage('lobby',this)">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--green2)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    <div class="nav-label">Lobby</div>
+  </div>
+  <div class="nav-item" onclick="goPage('stats',this)">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--green2)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    <div class="nav-label">Stats</div>
+  </div>
+  <div class="nav-item" onclick="goPage('lb',this)">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+    <div class="nav-label">Leaderboard</div>
+  </div>
+  <div class="nav-item" onclick="goPage('hh',this)">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    <div class="nav-label">Hand History</div>
+  </div>
+</div>
+
+<script>
+function goPage(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if(el)el.classList.add('active');
+  window.scrollTo(0,0);
+}
+function doLogin(){
+  const o=document.getElementById('login-overlay');
+  o.style.animation='fadeOut 0.3s ease forwards';
+  setTimeout(()=>o.style.display='none',300);
+}
+function startGame(){window.location.href='scarney_artifact.html';}
+
+// Leaderboard
+const LBD={
+  wr:[
+    {name:'Kisaragi',  hands:2205,val:'+23.10bb/100',profit:'+509bb',  color:'#22a87e',me:true},
+    {name:'pom0807',   hands:1843,val:'+18.44bb/100',profit:'+340bb',  color:'#4285f4'},
+    {name:'EbiTale',   hands:3201,val:'+15.92bb/100',profit:'+509bb',  color:'#e05555'},
+    {name:'maruchin',  hands:987, val:'+12.30bb/100',profit:'+121bb',  color:'#f5a623'},
+    {name:'Pinfu',     hands:2100,val:'+8.74bb/100', profit:'+183bb',  color:'#8b5cf6'},
+    {name:'kaedew025', hands:755, val:'+6.21bb/100', profit:'+46bb',   color:'#06b6d4'},
+  ],
+  profit:[
+    {name:'EbiTale',   hands:3201,val:'+509bb',profit:'+15.92bb/100',color:'#e05555'},
+    {name:'Kisaragi',  hands:2205,val:'+509bb',profit:'+23.10bb/100',color:'#22a87e',me:true},
+    {name:'Pinfu',     hands:2100,val:'+183bb',profit:'+8.74bb/100', color:'#8b5cf6'},
+    {name:'pom0807',   hands:1843,val:'+340bb',profit:'+18.44bb/100',color:'#4285f4'},
+    {name:'maruchin',  hands:987, val:'+121bb',profit:'+12.30bb/100',color:'#f5a623'},
+    {name:'kaedew025', hands:755, val:'+46bb', profit:'+6.21bb/100', color:'#06b6d4'},
+  ]
+};
+function renderLB(mode){
+  const ranks=['👑','②','③'];
+  const rClass=['t1','t2','t3'];
+  document.getElementById('lb-list').innerHTML=LBD[mode].map((p,i)=>`
+    <div class="lb-row${p.me?' me':''}">
+      <div class="lb-rank ${rClass[i]||''}">${ranks[i]||i+1}</div>
+      <div class="lb-av" style="background:${p.color}">${p.name[0]}</div>
+      <div style="flex:1">
+        <div class="lb-name">${p.name}${p.me?' <span style="font-size:0.52rem;color:var(--green2)">YOU</span>':''}</div>
+        <div class="lb-hands">${p.hands.toLocaleString()} hands</div>
+      </div>
+      <div>
+        <div class="lb-val pos">${p.val}</div>
+        <div class="lb-sub">${p.profit}</div>
+      </div>
+    </div>`).join('');
+}
+function switchLbTab(el,mode){
+  document.querySelectorAll('.lb-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');renderLB(mode);
+}
+renderLB('wr');
+
+// Hand History
+const SC={'♥':'rv','♦':'rv','♠':'bk','♣':'gr'};
+function mkHC(r,s,w=28){const c=SC[s]||'wt';return `<div class="hc ${c}" style="width:${w}px;height:${Math.round(w*1.28)}px;"><div class="t">${r}</div><div class="b">${s}</div></div>`;}
+
+const HH=[
+  {id:'#xG9Nnu',date:'03/02 01:22',pos:'BTN',profit:'+24.5',cards:[{r:'K',s:'♥'},{r:'A',s:'♠'},{r:'7',s:'♦'},{r:'3',s:'♣'},{r:'J',s:'♥'},{r:'9',s:'♠'}]},
+  {id:'#mK7Pqr',date:'03/02 00:58',pos:'CO', profit:'-8.0', cards:[{r:'Q',s:'♦'},{r:'8',s:'♣'},{r:'4',s:'♥'},{r:'2',s:'♠'}]},
+  {id:'#nR4Yts',date:'03/01 23:45',pos:'HJ', profit:'0',    cards:[{r:'J',s:'♥'},{r:'3',s:'♣'}]},
+  {id:'#qW2Mxv',date:'03/01 22:30',pos:'UTG',profit:'+61.0',cards:[{r:'A',s:'♣'},{r:'A',s:'♦'},{r:'K',s:'♣'},{r:'Q',s:'♥'},{r:'9',s:'♠'},{r:'6',s:'♣'}]},
+  {id:'#bZ8Lop',date:'03/01 21:10',pos:'SB', profit:'-12.5',cards:[{r:'9',s:'♠'},{r:'4',s:'♦'},{r:'K',s:'♥'},{r:'J',s:'♣'},{r:'2',s:'♥'},{r:'Q',s:'♠'}]},
+  {id:'#cX5Nkm',date:'03/01 20:44',pos:'BB', profit:'+8.0', cards:[{r:'6',s:'♦'},{r:'7',s:'♦'},{r:'8',s:'♣'},{r:'5',s:'♥'}]},
+  {id:'#dV1Wjh',date:'03/01 19:22',pos:'BTN',profit:'0',    cards:[{r:'2',s:'♠'},{r:'5',s:'♣'}]},
+  {id:'#eU9Yig',date:'03/01 18:55',pos:'HJ', profit:'+42.0',cards:[{r:'A',s:'♥'},{r:'K',s:'♦'},{r:'Q',s:'♣'},{r:'J',s:'♠'},{r:'3',s:'♥'},{r:'7',s:'♣'}]},
+];
+document.getElementById('hh-list').innerHTML=HH.map(h=>{
+  const v=parseFloat(h.profit);
+  const ps=v>0?`<span style="color:var(--pos)">+${h.profit}bb</span>`:v<0?`<span style="color:var(--neg)">${h.profit}bb</span>`:`<span style="color:var(--muted)">±0bb</span>`;
+  return `<div class="hh-row" onclick="openModal('${h.id}')">
+    <div class="hh-top">
+      <div class="hh-meta"><div class="hh-date">${h.date}</div><div class="hh-pos">${h.pos}</div></div>
+      <div class="hh-profit">${ps}</div>
+    </div>
+    <div class="hh-cards">${h.cards.map(c=>mkHC(c.r,c.s)).join('')}</div>
+  </div>`;
+}).join('');
+
+// Modal
+const MD={
+  '#xG9Nnu':{date:'2026/03/02 01:22',
+    players:[
+      {pos:'SB',name:'kaedew025',stack:'100bb',cards:[{r:'K',s:'♣'},{r:'6',s:'♥'}],profit:'-0.5bb'},
+      {pos:'BB',name:'maruchin', stack:'100bb',cards:[{r:'A',s:'♦'},{r:'3',s:'♠'}],profit:'-1bb'},
+      {pos:'UTG',name:'pom0807', stack:'100bb',cards:[{r:'Q',s:'♠'},{r:'Q',s:'♣'}],profit:'+44bb'},
+      {pos:'HJ',name:'Kisaragi', stack:'100bb',cards:[{r:'K',s:'♥'},{r:'A',s:'♠'}],profit:'±0bb',me:true},
+      {pos:'CO',name:'EbiTale',  stack:'100bb',cards:[{r:'T',s:'♠'},{r:'T',s:'♣'}],profit:'-46bb'},
+      {pos:'BTN',name:'Pinfu',   stack:'100bb',cards:[{r:'8',s:'♣'},{r:'2',s:'♦'}],profit:'±0bb'},
+    ],
+    phases:[
+      {name:'Preflop',pot:'',board:[],actions:[
+        {pos:'UTG',name:'pom0807',  type:'raise',label:'Raise',amt:'2bb'},
+        {pos:'HJ', name:'Kisaragi', type:'fold', label:'Fold', amt:''},
+        {pos:'CO', name:'EbiTale',  type:'raise',label:'Raise',amt:'6bb'},
+        {pos:'BTN',name:'Pinfu',    type:'fold', label:'Fold', amt:''},
+        {pos:'SB', name:'kaedew025',type:'fold', label:'Fold', amt:''},
+        {pos:'BB', name:'maruchin', type:'fold', label:'Fold', amt:''},
+        {pos:'UTG',name:'pom0807',  type:'call', label:'Call', amt:'6bb'},
+      ]},
+      {name:'Flop',pot:'13.5bb',board:[{r:'8',s:'♦'},{r:'7',s:'♠'},{r:'3',s:'♥'}],actions:[
+        {pos:'UTG',name:'pom0807',type:'check',label:'Check',amt:''},
+        {pos:'CO', name:'EbiTale',type:'raise',label:'Bet',  amt:'6.75bb'},
+        {pos:'UTG',name:'pom0807',type:'raise',label:'Raise',amt:'16.88bb'},
+        {pos:'CO', name:'EbiTale',type:'call', label:'Call', amt:'16.88bb'},
+      ]},
+      {name:'Turn',pot:'47.26bb',board:[{r:'9',s:'♣'}],actions:[
+        {pos:'UTG',name:'pom0807',type:'raise',label:'Bet',  amt:'23.63bb'},
+        {pos:'CO', name:'EbiTale',type:'call', label:'Call', amt:'23.63bb'},
+      ]},
+      {name:'River',pot:'94.5bb',board:[{r:'2',s:'♠'}],actions:[
+        {pos:'UTG',name:'pom0807',type:'raise',label:'Bet',  amt:'53.5bb'},
+        {pos:'CO', name:'EbiTale',type:'fold', label:'Fold', amt:''},
+      ]},
+    ]
+  }
+};
+function openModal(id){
+  const d=MD[id];
+  const mc=document.getElementById('modal-content');
+  if(!d){
+    mc.innerHTML=`<div class="modal-hdr"><div><div class="modal-title">Hand ${id}</div><div class="modal-sub">詳細（Firebase連携後）</div></div><button class="modal-close" onclick="document.getElementById('modal-overlay').classList.remove('open')">✕</button></div><div style="padding:40px;text-align:center;color:var(--muted);font-size:0.72rem;">Firebase連携後に表示されます</div>`;
+  } else {
+    const ph=d.players.map(p=>{
+      const pv=p.profit.startsWith('+')?'pos':p.profit.startsWith('-')?'neg':'';
+      return `<div class="mp-row"><div class="mp-pos">${p.pos}</div><div class="mp-name" style="${p.me?'color:var(--green2);font-weight:700':''}">${p.name}</div><div class="mp-stack">${p.stack}</div><div class="mp-cards">${p.cards.map(c=>`<div class="mp-card" style="color:${(c.s==='♥'||c.s==='♦')?'#d0021b':'#1a1a1a'}">${c.r}${c.s}</div>`).join('')}</div><div class="mp-profit ${pv}">${p.profit}</div></div>`;
+    }).join('');
+    const phHTML=d.phases.map((ph,i)=>{
+      const board=ph.board.map(c=>mkHC(c.r,c.s,22)).join('');
+      const acts=ph.actions.map(a=>`<div class="action-row"><div class="ar-pos">${a.pos}</div><div class="ar-name">${a.name}</div><div class="ar-act ${a.type}">${a.label}</div><div class="ar-amt">${a.amt}</div></div>`).join('');
+      return `${i>0?'<div class="modal-sep" style="margin:6px 0;"></div>':''}<div class="phase-block"><div class="phase-title">${ph.name}${ph.pot?`<span class="phase-pot">(${ph.pot})</span>`:''}</div>${board?`<div class="phase-board">${board}</div>`:''}${acts}</div>`;
+    }).join('');
+    mc.innerHTML=`<div class="modal-hdr"><div><div class="modal-title">Hand ${id}</div><div class="modal-sub">${d.date} · KSRG 6-Max PLO</div></div><button class="modal-close" onclick="document.getElementById('modal-overlay').classList.remove('open')">✕</button></div><div class="modal-players">${ph}</div><div class="modal-sep"></div><div class="modal-actions">${phHTML}</div>`;
+  }
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal(e){if(e.target===document.getElementById('modal-overlay'))document.getElementById('modal-overlay').classList.remove('open');}
+
+const s=document.createElement('style');
+s.textContent='@keyframes fadeOut{from{opacity:1}to{opacity:0}}';
+document.head.appendChild(s);
+</script>
+</body>
+</html>
