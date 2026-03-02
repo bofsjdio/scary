@@ -116,7 +116,7 @@ body{position:fixed;inset:0;}
 .seat-info.winner{border-color:#6de8a0;background:rgba(109,232,160,0.15);}
 .sn{font-size:0.58rem;font-weight:700;}
 .sc{font-size:0.9rem;color:var(--gold);font-weight:800;}
-.sb{font-size:0.8rem;color:#f5c518;font-weight:900;background:rgba(201,162,39,0.3);border-radius:6px;padding:3px 8px;border:1px solid rgba(245,197,24,0.4);}
+.sb{font-size:0.8rem;color:#ff8c42;font-weight:900;background:rgba(255,140,66,0.2);border-radius:6px;padding:3px 8px;border:1px solid rgba(255,140,66,0.45);}
 .ss{font-size:0.42rem;color:var(--muted);}
 .pos-badge{
   display:inline-block;font-size:0.65rem;font-weight:800;
@@ -311,8 +311,8 @@ body{position:fixed;inset:0;}
 .card.sf .cr{font-size:0.52rem;}.card.sf .cs{font-size:0.42rem;}.card.sf .cs-big{font-size:0.7rem;}
 .card.sd{width:24px;height:34px;padding:1px 2px;}
 .card.sd .cr{font-size:0.5rem;font-weight:700;}.card.sd .cs{font-size:0.4rem;}.card.sd .cs-big{font-size:0.65rem;}
-.card.hc{width:40px;height:56px;padding:2px 3px;}
-.card.hc .cr{font-size:0.72rem;font-weight:700;}.card.hc .cs{font-size:0.56rem;}.card.hc .cs-big{font-size:0.9rem;}
+.card.hc{width:52px;height:72px;padding:3px 4px;}
+.card.hc .cr{font-size:0.9rem;font-weight:700;}.card.hc .cs{font-size:0.7rem;}.card.hc .cs-big{font-size:1.2rem;}
 .card.empty{background:rgba(255,255,255,0.04);border:1.5px dashed rgba(255,255,255,0.1);box-shadow:none;animation:none;}
 .card.must-discard{border:2px solid #ff3333!important;animation:pulseRed 0.7s ease-in-out infinite;}
 @keyframes pulseRed{0%,100%{box-shadow:0 0 5px rgba(255,50,50,0.5)}50%{box-shadow:0 0 18px rgba(255,50,50,1)}}
@@ -353,7 +353,85 @@ body{position:fixed;inset:0;}
 .sp-rl{font-size:0.67rem;color:#8aada8;}
 .sp-rv{font-family:'DM Mono',monospace;font-size:0.72rem;}
 .sp-rv2{font-size:0.55rem;color:#4a6360;margin-top:1px;text-align:right;}
+
+/* Hand Total Score */
+#hand-total{
+  position:fixed;
+  bottom:72px;right:12px;
+  background:rgba(0,0,0,0.75);
+  border:1px solid rgba(255,255,255,0.15);
+  border-radius:10px;
+  padding:5px 10px;
+  font-family:'DM Mono',monospace;
+  font-size:0.72rem;
+  color:rgba(255,255,255,0.7);
+  z-index:50;
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  gap:1px;
+  backdrop-filter:blur(4px);
+}
+#hand-total .ht-label{font-size:0.5rem;color:rgba(255,255,255,0.4);letter-spacing:0.06em;}
+#hand-total .ht-val{font-size:1rem;font-weight:700;color:#f0d080;}
 </style>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+import { getDatabase, ref, set, get, push } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAcbEadlZP7e2_z8wQfVrZlj6UBpzshKD8",
+  authDomain: "ksrg-poker.firebaseapp.com",
+  projectId: "ksrg-poker",
+  storageBucket: "ksrg-poker.firebasestorage.app",
+  messagingSenderId: "646556872082",
+  appId: "1:646556872082:web:cd4692c238247c10fca54b",
+  databaseURL: "https://ksrg-poker-default-rtdb.asia-southeast1.firebasedatabase.app"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// Get UID from URL params
+const params = new URLSearchParams(window.location.search);
+const uid = params.get('uid');
+const playerName = params.get('name') || 'Player';
+
+// Update player name in game
+if (playerName) {
+  window._firebasePlayerName = playerName;
+}
+
+// Save hand result to Firebase
+window.saveHandResult = async function(profitBB) {
+  if (!uid) return;
+  try {
+    const userRef = ref(db, 'users/' + uid);
+    const snap = await get(userRef);
+    const data = snap.val() || {};
+    const newHands = (data.hands || 0) + 1;
+    const newProfit = parseFloat(((data.profit || 0) + profitBB).toFixed(2));
+
+    await set(userRef, {
+      ...data,
+      hands: newHands,
+      profit: newProfit,
+      ev: newProfit // 簡易的にEV=実収支（後で分離）
+    });
+
+    // Save hand history
+    const hhRef = ref(db, 'handHistory/' + uid);
+    await push(hhRef, {
+      date: new Date().toISOString(),
+      profit: profitBB,
+      hands: newHands
+    });
+  } catch(e) {
+    console.error('Firebase save error:', e);
+  }
+};
+</script>
 </head>
 <body>
 <div id="app">
@@ -739,7 +817,7 @@ function showBanner(msg){const b=document.getElementById('discard-banner');b.tex
 function hideBanner(){document.getElementById('discard-banner').classList.remove('show');}
 function showdown(){
   G.phase='showdown';G.showdownReveal=true;hideActionUI();
-  document.getElementById('action-panel').style.display='none';
+  const _ap0=document.getElementById('action-panel');if(_ap0)_ap0.style.display='none';
   renderMyHand();render();
   const active=G.players.filter(p=>!p.folded);
   if(active.length===1){active[0].chips+=G.pot;markWinner([active[0].id]);showResult(active[0].name+' の勝利！','🏆','全員フォールド\n👑 '+active[0].name+'\n+'+(showBB?(G.pot/BB).toFixed(1)+'bb':G.pot)+' 獲得！',[{id:active[0].id,label:'👑 '+active[0].name+' のハンド'}]);return;}
@@ -786,7 +864,7 @@ function e5(cards){const rv=cards.map(c=>RV[c.rank]).sort((a,b)=>b-a);const su=c
 function cmpH(a,b){if(a.rank!==b.rank)return a.rank-b.rank;for(let i=0;i<Math.min(a.tiebreak.length,b.tiebreak.length);i++)if(a.tiebreak[i]!==b.tiebreak[i])return a.tiebreak[i]-b.tiebreak[i];return 0;}
 function calcLow(p){return p.hand.length?p.hand.reduce((s,c)=>s+LV[c.rank],0):999;}
 function combos(arr,k){if(!k)return[[]];if(arr.length<k)return[];const[f,...r]=arr;return[...combos(r,k-1).map(c=>[f,...c]),...combos(r,k)];}
-function render(){renderBoards();setTimeout(()=>renderDiscardOverlay(),10);renderSeats();const dispPot=G.pot-G.roundBets.reduce((a,b)=>a+b,0);document.getElementById('pot-val').textContent=(showBB?(dispPot/BB).toFixed(1)+'bb':dispPot);document.getElementById('phase-badge').textContent=phLbl(G.phase).toUpperCase();updateDealerBtn();}
+function render(){renderBoards();updateHandTotal();setTimeout(()=>renderDiscardOverlay(),10);renderSeats();const dispPot=G.pot-G.roundBets.reduce((a,b)=>a+b,0);document.getElementById('pot-val').textContent=(showBB?(dispPot/BB).toFixed(1)+'bb':dispPot);document.getElementById('phase-badge').textContent=phLbl(G.phase).toUpperCase();updateDealerBtn();}
 let _lastUpper=-1,_lastLower=-1;
 function renderBoards(){
   const up=document.getElementById('upper-board');const lo=document.getElementById('lower-board');
@@ -937,11 +1015,15 @@ function showResult(title,icon,details,winners){
       <div style="font-size:1rem;color:#fff;white-space:pre-line;line-height:1.9;font-weight:600;">${details}</div>
       ${winnerCards}
     </div>
-    <div style="margin-top:20px;font-size:0.65rem;color:rgba(255,255,255,0.3);">タップで続ける</div>
+    <div style="margin-top:20px;display:flex;gap:10px;justify-content:center;"><button onclick="event.stopPropagation();window.location.href='ksrg_lobby.html';" style="padding:13px 36px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.25);border-radius:12px;color:rgba(255,255,255,0.85);font-size:0.88rem;cursor:pointer;font-family:sans-serif;font-weight:600;letter-spacing:0.03em;">ロビーに戻る</button></div>
+    <div style="margin-top:8px;font-size:0.62rem;color:rgba(255,255,255,0.25);">タップで次のハンドへ</div>
   </div>`;
   overlay.style.display='flex';
-  overlay.onclick=()=>{overlay.style.display='none';document.getElementById('action-panel').style.display='';initGame();};
-  wait(()=>{if(overlay.style.display!=='none'){overlay.style.display='none';document.getElementById('action-panel').style.display='';initGame();}},6000);
+  overlay.onclick=()=>{overlay.style.display='none';const _ap1=document.getElementById('action-panel');if(_ap1)_ap1.style.display='';initGame();};
+  // Save to Firebase
+  const humanProfit = G.players[HUMAN_ID] ? (G.players[HUMAN_ID].chips - 1000) / BB : 0;
+  if(window.saveHandResult) window.saveHandResult(parseFloat(humanProfit.toFixed(2)));
+  wait(()=>{if(overlay.style.display!=='none'){overlay.style.display='none';const _ap2=document.getElementById('action-panel');if(_ap2)_ap2.style.display='';initGame();}},6000);
 }
 initGame();
 
@@ -982,6 +1064,25 @@ function openStatsPopup(pid, name) {
 function closeStatsPopup() {
   document.getElementById('stats-popup').classList.remove('open');
 }
+
+// Hand total score display
+function calcHandTotal(hand) {
+  const vals = {'A':1,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'T':10,'J':10,'Q':10,'K':10};
+  return hand.reduce((sum, c) => sum + (vals[c.rank] || 0), 0);
+}
+function updateHandTotal() {
+  const el = document.getElementById('hand-total');
+  const valEl = document.getElementById('ht-val');
+  if (!el || !valEl) return;
+  if (!G || !G.players) return;
+  const p = G.players[HUMAN_ID];
+  if (!p || p.folded || p.hand.length === 0) {
+    el.style.display = 'none';
+    return;
+  }
+  el.style.display = 'flex';
+  valEl.textContent = calcHandTotal(p.hand);
+}
 </script>
 
 <!-- Player Stats Popup -->
@@ -1008,5 +1109,7 @@ function closeStatsPopup() {
     <div class="sp-row"><div class="sp-rl">3Bet</div><div><div class="sp-rv neu" id="sp-3bet">—</div><div class="sp-rv2" id="sp-3bet2"></div></div></div>
   </div>
 </div>
+
+<div id="hand-total"><div class="ht-label">HAND</div><div class="ht-val" id="ht-val">—</div></div>
 </body>
 </html>

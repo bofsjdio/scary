@@ -171,6 +171,113 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 @keyframes fadeOut{from{opacity:1}to{opacity:0}}
 @keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
 </style>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAcbEadlZP7e2_z8wQfVrZlj6UBpzshKD8",
+  authDomain: "ksrg-poker.firebaseapp.com",
+  projectId: "ksrg-poker",
+  storageBucket: "ksrg-poker.firebasestorage.app",
+  messagingSenderId: "646556872082",
+  appId: "1:646556872082:web:cd4692c238247c10fca54b",
+  databaseURL: "https://ksrg-poker-default-rtdb.asia-southeast1.firebasedatabase.app"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+const provider = new GoogleAuthProvider();
+
+// Google Login
+window.doLogin = async function() {
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+    // Save user to DB if new
+    const userRef = ref(db, 'users/' + user.uid);
+    const snap = await get(userRef);
+    if (!snap.exists()) {
+      await set(userRef, {
+        name: user.displayName,
+        email: user.email,
+        photoURL: user.photoURL,
+        hands: 0,
+        profit: 0,
+        ev: 0,
+        since: new Date().toLocaleDateString('ja-JP')
+      });
+    }
+  } catch(e) {
+    console.error(e);
+  }
+};
+
+window.doLogout = async function() {
+  await signOut(auth);
+};
+
+// Auth state listener
+onAuthStateChanged(auth, async (user) => {
+  const overlay = document.getElementById('login-overlay');
+  if (user) {
+    // Logged in
+    if (overlay) overlay.style.display = 'none';
+
+    // Update UI
+    const name = user.displayName || user.email;
+    const initial = name[0].toUpperCase();
+    document.querySelectorAll('.msn, #username-display').forEach(el => el.textContent = name);
+    document.querySelectorAll('.avatar').forEach(el => el.textContent = initial);
+
+    // Load stats
+    const userRef = ref(db, 'users/' + user.uid);
+    onValue(userRef, (snap) => {
+      const data = snap.val();
+      if (!data) return;
+      const hands = data.hands || 0;
+      const profit = data.profit || 0;
+      const ev = data.ev || 0;
+      const wr = hands > 0 ? ((profit / hands) * 100).toFixed(2) : '0.00';
+      const evwr = hands > 0 ? ((ev / hands) * 100).toFixed(2) : '0.00';
+
+      // Lobby stats
+      document.getElementById('stat-hands') && (document.getElementById('stat-hands').textContent = hands.toLocaleString());
+      const profitEl = document.getElementById('stat-profit');
+      if (profitEl) {
+        profitEl.textContent = (profit >= 0 ? '+' : '') + profit.toFixed(1) + ' bb';
+        profitEl.className = 'msv ' + (profit >= 0 ? 'pos' : 'neg');
+      }
+      const wrEl = document.getElementById('stat-winrate');
+      if (wrEl) {
+        wrEl.textContent = (parseFloat(wr) >= 0 ? '+' : '') + wr;
+        wrEl.className = 'msv ' + (parseFloat(wr) >= 0 ? 'pos' : 'neg');
+      }
+    });
+
+    // Pass UID to game
+    window._currentUID = user.uid;
+    window._currentName = name;
+
+  } else {
+    // Not logged in
+    if (overlay) overlay.style.display = 'flex';
+  }
+});
+
+// Start game with user info
+window.startGame = function() {
+  if (!window._currentUID) {
+    alert('ログインしてください');
+    return;
+  }
+  window.location.href = 'scarney_artifact.html?uid=' + window._currentUID + '&name=' + encodeURIComponent(window._currentName);
+};
+
+</script>
 </head>
 <body>
 
@@ -355,6 +462,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 </div>
 
 <script>
+// Auth functions handled by Firebase module above
 function goPage(id,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
@@ -362,12 +470,8 @@ function goPage(id,el){
   if(el)el.classList.add('active');
   window.scrollTo(0,0);
 }
-function doLogin(){
-  const o=document.getElementById('login-overlay');
-  o.style.animation='fadeOut 0.3s ease forwards';
-  setTimeout(()=>o.style.display='none',300);
-}
-function startGame(){window.location.href='scarney_artifact.html';}
+// doLogin handled by Firebase
+// startGame handled by Firebase
 
 // Leaderboard
 const LBD={
