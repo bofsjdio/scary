@@ -244,18 +244,28 @@ onAuthStateChanged(auth, async (user) => {
       const wr = hands > 0 ? ((profit / hands) * 100).toFixed(2) : '0.00';
       const evwr = hands > 0 ? ((ev / hands) * 100).toFixed(2) : '0.00';
 
-      // Lobby stats
-      document.getElementById('stat-hands') && (document.getElementById('stat-hands').textContent = hands.toLocaleString());
-      const profitEl = document.getElementById('stat-profit');
-      if (profitEl) {
-        profitEl.textContent = (profit >= 0 ? '+' : '') + profit.toFixed(1) + ' bb';
-        profitEl.className = 'msv ' + (profit >= 0 ? 'pos' : 'neg');
-      }
-      const wrEl = document.getElementById('stat-winrate');
-      if (wrEl) {
-        wrEl.textContent = (parseFloat(wr) >= 0 ? '+' : '') + wr;
-        wrEl.className = 'msv ' + (parseFloat(wr) >= 0 ? 'pos' : 'neg');
-      }
+      const isPos = (v) => parseFloat(v) >= 0;
+      const fmt = (v, suffix='') => (isPos(v)?'+':'') + parseFloat(v).toFixed(2) + suffix;
+
+      // Lobby MY STATS
+      const el = (id) => document.getElementById(id);
+      if(el('stat-hands')) el('stat-hands').textContent = hands.toLocaleString();
+      if(el('stat-profit')) { el('stat-profit').textContent = fmt(profit,'bb'); el('stat-profit').className = 'msv '+(isPos(profit)?'pos':'neg'); }
+      if(el('stat-winrate')) { el('stat-winrate').textContent = fmt(wr,''); el('stat-winrate').className = 'msv '+(isPos(wr)?'pos':'neg'); }
+
+      // Stats page cards
+      if(el('s-hands')) el('s-hands').textContent = hands.toLocaleString();
+      if(el('s-profit')) { el('s-profit').textContent = fmt(profit,'bb'); el('s-profit').className = 'ss-val '+(isPos(profit)?'pos':'neg'); }
+      if(el('s-wr')) { el('s-wr').textContent = fmt(wr,''); el('s-wr').className = 'ss-val '+(isPos(wr)?'pos':'neg'); }
+      if(el('s-ev')) { el('s-ev').textContent = fmt(ev,'bb'); el('s-ev').className = 'ss-val '+(isPos(ev)?'pos':'neg'); }
+      if(el('s-evwr')) { el('s-evwr').textContent = fmt(evwr,''); el('s-evwr').className = 'ss-val '+(isPos(evwr)?'pos':'neg'); }
+
+      // Stats detail rows
+      if(el('sd-vpip')) el('sd-vpip').textContent = data.vpip ? data.vpip+'%' : '—';
+      if(el('sd-pfr')) el('sd-pfr').textContent = data.pfr ? data.pfr+'%' : '—';
+      if(el('sd-3bet')) el('sd-3bet').textContent = data.threebet ? data.threebet+'%' : '—';
+      if(el('sd-af')) el('sd-af').textContent = data.af || '—';
+      if(el('sd-wtsd')) el('sd-wtsd').textContent = data.wtsd ? data.wtsd+'%' : '—';
     });
 
     // Pass UID to game
@@ -426,9 +436,9 @@ window.switchHHTab = function(el, mode) {
       <div><div class="mst">MY STATS</div><div class="msn">Kisaragi</div></div>
     </div>
     <div class="msg">
-      <div class="ms"><div class="msl">総ハンド数</div><div class="msv neu">2,205</div></div>
-      <div class="ms"><div class="msl">実収支</div><div class="msv pos">+363.1bb</div></div>
-      <div class="ms"><div class="msl">bb/100</div><div class="msv pos">+16.47</div></div>
+      <div class="ms"><div class="msl">総ハンド数</div><div class="msv neu" id="stat-hands">—</div></div>
+      <div class="ms"><div class="msl">実収支</div><div class="msv" id="stat-profit">—</div></div>
+      <div class="ms"><div class="msl">bb/100</div><div class="msv" id="stat-winrate">—</div></div>
     </div>
     <div class="chart-wrap">
       <div class="chart-legend"><span class="cl1">実収支</span><span class="cl2">収支 (EV)</span></div>
@@ -460,12 +470,12 @@ window.switchHHTab = function(el, mode) {
     </div>
   </div>
   <div class="stats-summary">
-    <div class="ss-card"><div class="ss-label">総ハンド数</div><div class="ss-val neu">2,205</div></div>
-    <div class="ss-card"><div class="ss-label">実収支</div><div class="ss-val pos">+363.1bb</div></div>
-    <div class="ss-card"><div class="ss-label">Win Rate</div><div class="ss-val pos">+16.47</div><div class="ss-sub">bb/100</div></div>
-    <div class="ss-card"><div class="ss-label">収支 (EV)</div><div class="ss-val pos">+509.4bb</div></div>
-    <div class="ss-card"><div class="ss-label">Win Rate (EV)</div><div class="ss-val pos">+23.10</div><div class="ss-sub">bb/100</div></div>
-    <div class="ss-card"><div class="ss-label">VPIP / PFR</div><div class="ss-val neu">21 / 16</div></div>
+    <div class="ss-card"><div class="ss-label">総ハンド数</div><div class="ss-val neu" id="s-hands">—</div></div>
+    <div class="ss-card"><div class="ss-label">実収支</div><div class="ss-val" id="s-profit">—</div></div>
+    <div class="ss-card"><div class="ss-label">Win Rate</div><div class="ss-val" id="s-wr">—</div><div class="ss-sub">bb/100</div></div>
+    <div class="ss-card"><div class="ss-label">収支 (EV)</div><div class="ss-val" id="s-ev">—</div></div>
+    <div class="ss-card"><div class="ss-label">Win Rate (EV)</div><div class="ss-val" id="s-evwr">—</div><div class="ss-sub">bb/100</div></div>
+    <div class="ss-card"><div class="ss-label">VPIP / PFR</div><div class="ss-val neu" id="s-vpip">— / —</div></div>
   </div>
   <div class="big-chart">
     <div class="bc-hdr">
@@ -493,11 +503,11 @@ window.switchHHTab = function(el, mode) {
     </svg>
   </div>
   <div class="stats-detail">
-    <div class="sd-row"><div class="sd-label">VPIP</div><div><div class="sd-val neu">21%</div><div class="sd-sub">456/2.1k</div></div></div>
-    <div class="sd-row"><div class="sd-label">PFR</div><div><div class="sd-val neu">16%</div><div class="sd-sub">346/2.1k</div></div></div>
-    <div class="sd-row"><div class="sd-label">3Bet</div><div><div class="sd-val neu">8%</div><div class="sd-sub">73/882</div></div></div>
-    <div class="sd-row"><div class="sd-label">Aggression Factor</div><div><div class="sd-val neu">2.4</div></div></div>
-    <div class="sd-row"><div class="sd-label">Went to Showdown</div><div><div class="sd-val neu">24%</div></div></div>
+    <div class="sd-row"><div class="sd-label">VPIP</div><div><div class="sd-val neu" id="sd-vpip">—</div><div class="sd-sub" id="sd-vpip2"></div></div></div>
+    <div class="sd-row"><div class="sd-label">PFR</div><div><div class="sd-val neu" id="sd-pfr">—</div><div class="sd-sub" id="sd-pfr2"></div></div></div>
+    <div class="sd-row"><div class="sd-label">3Bet</div><div><div class="sd-val neu" id="sd-3bet">—</div><div class="sd-sub" id="sd-3bet2"></div></div></div>
+    <div class="sd-row"><div class="sd-label">Aggression Factor</div><div><div class="sd-val neu" id="sd-af">—</div></div></div>
+    <div class="sd-row"><div class="sd-label">Went to Showdown</div><div><div class="sd-val neu" id="sd-wtsd">—</div></div></div>
   </div>
 </div>
 
