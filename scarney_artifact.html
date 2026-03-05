@@ -420,12 +420,17 @@ window.saveHandResult = async function(profitBB) {
       ev: newProfit // 簡易的にEV=実収支（後で分離）
     });
 
-    // Save hand history
+    // Save hand history with cards and position
+    const humanPlayer = G.players[HUMAN_ID];
+    const pos = typeof getPosition === 'function' ? getPosition(HUMAN_ID) : '—';
+    const cards = humanPlayer && humanPlayer.hand ? humanPlayer.hand.map(c => ({r: c.rank, s: c.suit})) : [];
     const hhRef = ref(db, 'handHistory/' + uid);
     await push(hhRef, {
       date: new Date().toISOString(),
       profit: profitBB,
-      hands: newHands
+      hands: newHands,
+      pos: pos,
+      cards: cards
     });
   } catch(e) {
     console.error('Firebase save error:', e);

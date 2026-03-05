@@ -262,11 +262,102 @@ onAuthStateChanged(auth, async (user) => {
     window._currentUID = user.uid;
     window._currentName = name;
 
+    // Load hand history
+    const hhRef = ref(db, 'handHistory/' + user.uid);
+    onValue(hhRef, (snap) => {
+      const data = snap.val();
+      renderHandHistory(data);
+    });
+
+    // Load bookmarks
+    const bmRef = ref(db, 'bookmarks/' + user.uid);
+    onValue(bmRef, (snap) => {
+      window._bookmarks = snap.val() || {};
+    });
+
   } else {
     // Not logged in
     if (overlay) overlay.style.display = 'flex';
   }
 });
+
+// Toggle bookmark
+window.toggleBookmark = async function(handId) {
+  if (!window._currentUID) return;
+  const bmRef = ref(db, 'bookmarks/' + window._currentUID + '/' + handId);
+  const snap = await get(bmRef);
+  if (snap.exists()) {
+    await set(bmRef, null);
+  } else {
+    await set(bmRef, true);
+  }
+};
+
+// Render hand history from Firebase data
+window.renderHandHistory = function(data) {
+  const list = document.getElementById('hh-list');
+  const bmList = document.getElementById('hh-bm-list');
+  if (!list) return;
+
+  if (!data) {
+    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:0.72rem;">ハンド履歴がありません</div>';
+    if (bmList) bmList.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:0.72rem;">ブックマークがありません</div>';
+    return;
+  }
+
+  const SC = {'♥':'rv','♦':'rv','♠':'bk','♣':'gr'};
+  function mkHC(r, s, w=26) {
+    const isRed = s==='♥' || s==='♦';
+    return `<div class="hc ${isRed?'rv':'bk'}" style="width:${w}px;height:${Math.round(w*1.35)}px;"><div class="t">${r}</div><div class="b">${s}</div></div>`;
+  }
+
+  // Convert to array and sort by date desc
+  const hands = Object.entries(data).map(([id, h]) => ({id, ...h}));
+  hands.sort((a, b) => new Date(b.date) - new Date(a.date));
+  const recent = hands.slice(0, 100);
+
+  document.querySelector('.hh-count').textContent = '直近 ' + recent.length + ' ハンドを表示中';
+
+  function renderRow(h) {
+    const v = h.profit || 0;
+    const ps = v > 0 ? `<span style="color:var(--pos)">+${v.toFixed(1)}bb</span>`
+                     : v < 0 ? `<span style="color:var(--neg)">${v.toFixed(1)}bb</span>`
+                     : `<span style="color:var(--muted)">±0bb</span>`;
+    const dateStr = new Date(h.date).toLocaleString('ja-JP', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const isBm = window._bookmarks && window._bookmarks[h.id];
+    const cardsHTML = h.cards ? h.cards.map(c => mkHC(c.r, c.s)).join('') : '';
+    const pos = h.pos || '—';
+    return `<div class="hh-row" id="hh-${h.id}">
+      <div class="hh-top">
+        <div class="hh-meta">
+          <div class="hh-date">${dateStr}</div>
+          <div class="hh-pos">${pos}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="hh-profit">${ps}</div>
+          <div onclick="event.stopPropagation();toggleBookmarkUI('${h.id}')" style="cursor:pointer;font-size:1rem;opacity:${isBm?1:0.3};" id="bm-${h.id}">🔖</div>
+        </div>
+      </div>
+      ${cardsHTML ? `<div class="hh-cards">${cardsHTML}</div>` : ''}
+    </div>`;
+  }
+
+  list.innerHTML = recent.map(renderRow).join('');
+
+  // Bookmarked
+  if (bmList) {
+    const bm = recent.filter(h => window._bookmarks && window._bookmarks[h.id]);
+    bmList.innerHTML = bm.length ? bm.map(renderRow).join('')
+      : '<div style="text-align:center;padding:40px;color:var(--muted);font-size:0.72rem;">ブックマークがありません</div>';
+  }
+};
+
+window.toggleBookmarkUI = async function(handId) {
+  await toggleBookmark(handId);
+  const el = document.getElementById('bm-' + handId);
+  const isBm = window._bookmarks && window._bookmarks[handId];
+  if (el) el.style.opacity = isBm ? 0.3 : 1;
+};
 
 // Start game with user info
 window.startGame = function() {
@@ -277,6 +368,13 @@ window.startGame = function() {
   window.location.href = 'scarney_artifact.html?uid=' + window._currentUID + '&name=' + encodeURIComponent(window._currentName);
 };
 
+
+window.switchHHTab = function(el, mode) {
+  document.querySelectorAll('.hh-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('hh-list').style.display = mode === 'all' ? '' : 'none';
+  document.getElementById('hh-bm-list').style.display = mode === 'bm' ? '' : 'none';
+};
 </script>
 </head>
 <body>
@@ -429,11 +527,12 @@ window.startGame = function() {
     <div class="logo-title">KSRG</div>
   </div>
   <div class="hh-tabs">
-    <div class="hh-tab active">すべて</div>
-    <div class="hh-tab">ブックマーク</div>
+    <div class="hh-tab active" onclick="switchHHTab(this,'all')">すべて</div>
+    <div class="hh-tab" onclick="switchHHTab(this,'bm')">ブックマーク</div>
   </div>
   <div class="hh-count">直近 100 ハンドを表示中</div>
   <div class="hh-list" id="hh-list"></div>
+  <div class="hh-list" id="hh-bm-list" style="display:none;"></div>
 </div>
 
 <!-- Hand Detail Modal -->
@@ -529,17 +628,7 @@ const HH=[
   {id:'#dV1Wjh',date:'03/01 19:22',pos:'BTN',profit:'0',    cards:[{r:'2',s:'♠'},{r:'5',s:'♣'}]},
   {id:'#eU9Yig',date:'03/01 18:55',pos:'HJ', profit:'+42.0',cards:[{r:'A',s:'♥'},{r:'K',s:'♦'},{r:'Q',s:'♣'},{r:'J',s:'♠'},{r:'3',s:'♥'},{r:'7',s:'♣'}]},
 ];
-document.getElementById('hh-list').innerHTML=HH.map(h=>{
-  const v=parseFloat(h.profit);
-  const ps=v>0?`<span style="color:var(--pos)">+${h.profit}bb</span>`:v<0?`<span style="color:var(--neg)">${h.profit}bb</span>`:`<span style="color:var(--muted)">±0bb</span>`;
-  return `<div class="hh-row" onclick="openModal('${h.id}')">
-    <div class="hh-top">
-      <div class="hh-meta"><div class="hh-date">${h.date}</div><div class="hh-pos">${h.pos}</div></div>
-      <div class="hh-profit">${ps}</div>
-    </div>
-    <div class="hh-cards">${h.cards.map(c=>mkHC(c.r,c.s)).join('')}</div>
-  </div>`;
-}).join('');
+// Hand history rendered dynamically from Firebase
 
 // Modal
 const MD={
